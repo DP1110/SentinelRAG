@@ -28,6 +28,7 @@ class QueryMeta(BaseModel):
     filtered_out: int
     persona: str
     model: str
+    cached: bool = False
 
 
 class QueryResponse(BaseModel):

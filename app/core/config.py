@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
-from typing import Optional
+from typing import Optional, List
 
 
 class Settings(BaseSettings):
@@ -15,9 +15,29 @@ class Settings(BaseSettings):
         default="sqlite:///./sentinelrag.db",
         description="Database connection string (PostgreSQL with pgvector in production, SQLite for local/testing)"
     )
+    # High-concurrency Connection Pool Settings (for 1,000+ concurrent users)
+    DB_POOL_SIZE: int = 50
+    DB_MAX_OVERFLOW: int = 100
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
     
-    # Redis
+    # Redis Distributed Cache & Rate Limiting
     REDIS_URL: str = "redis://localhost:6379/0"
+    ENABLE_REDIS: bool = True
+    
+    # Response Cache (Permission-Isolated Semantic Cache)
+    ENABLE_RESPONSE_CACHE: bool = True
+    RESPONSE_CACHE_TTL_SECONDS: int = 300  # 5 minutes
+    
+    # Distributed Rate Limiter
+    ENABLE_RATE_LIMITER: bool = True
+    RATE_LIMIT_PER_MINUTE: int = 120  # requests per minute per identity
+    
+    # Async Background Audit Logging
+    ASYNC_AUDIT_LOGGING: bool = True
+    
+    # Observability & Metrics
+    ENABLE_METRICS: bool = True
     
     # Models
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"

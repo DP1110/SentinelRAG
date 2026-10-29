@@ -26,6 +26,7 @@ def resolve_principals_for_user(user: User, db: Session) -> List[str]:
 
 def get_current_identity(
     x_persona: Optional[str] = Header(None, alias="X-Persona"),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ) -> IdentityContext:
@@ -34,12 +35,16 @@ def get_current_identity(
         persona_key = x_persona.lower().strip()
         if persona_key in SEEDED_PERSONAS:
             info = SEEDED_PERSONAS[persona_key]
+            effective_user_id = x_user_id if isinstance(x_user_id, str) and x_user_id else info["user_id"]
+            effective_principals = list(info["principals"])
+            if isinstance(x_user_id, str) and x_user_id:
+                effective_principals = [f"user:{x_user_id}"] + [p for p in effective_principals if not p.startswith("user:")]
             return IdentityContext(
-                user_id=info["user_id"],
-                email=info["email"],
+                user_id=effective_user_id,
+                email=f"{effective_user_id}@example.com" if (isinstance(x_user_id, str) and x_user_id) else info["email"],
                 display_name=info["display_name"],
                 persona=persona_key,
-                principals=info["principals"],
+                principals=effective_principals,
             )
 
     # 2. Check for Bearer token

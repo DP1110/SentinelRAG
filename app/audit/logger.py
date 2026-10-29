@@ -33,6 +33,41 @@ def record_audit_log(
     return log_entry
 
 
+def background_record_audit_log(
+    user_id: str,
+    query: str,
+    rewritten_query: Optional[str],
+    retrieved_ids: List[str],
+    removed_ids: List[str],
+    model: str,
+    latency_ms: float,
+    tokens: int,
+):
+    """
+    Asynchronous audit logger executed via BackgroundTasks.
+    Decouples database persistence from the user response critical path for 1,000+ concurrent users.
+    """
+    from app.db.session import SessionLocal
+    db = SessionLocal()
+    try:
+        log_entry = AuditLog(
+            user_id=user_id,
+            query=query,
+            rewritten_query=rewritten_query,
+            retrieved_ids=retrieved_ids,
+            removed_ids=removed_ids,
+            model=model,
+            latency_ms=latency_ms,
+            tokens=tokens,
+        )
+        db.add(log_entry)
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
+
+
 def get_audit_logs(
     db: Session,
     limit: int = 50,

@@ -5,25 +5,21 @@ from app.core.identity import IdentityContext
 from app.db.models import Document, DocumentACL
 from app.retrieval.hybrid import RetrievalCandidate
 from app.core.config import settings
-
-# Short-TTL ACL Cache: { doc_id: (timestamp, set_of_principals, is_active) }
-_ACL_CACHE: Dict[str, Tuple[float, Set[str], bool]] = {}
+from app.core.redis import cache_manager
 
 
 def get_fresh_document_principals(doc_id: str, db: Session) -> Tuple[Set[str], bool]:
     """
-    Fetches the freshest ACL principals for a document, utilizing a 60-second TTL cache.
+    Fetches the freshest ACL principals for a document, utilizing distributed Redis cache with TTL.
     """
-    now = time.time()
-    if doc_id in _ACL_CACHE:
-        cached_time, principals, is_active = _ACL_CACHE[doc_id]
-        if now - cached_time < settings.ACL_CACHE_TTL_SECONDS:
-            return principals, is_active
+    cached = cache_manager.get_acl(doc_id)
+    if cached is not None:
+        return cached
 
     # Fetch from database
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
-        _ACL_CACHE[doc_id] = (now, set(), False)
+        cache_manager.set_acl(doc_id, [], False)
         return set(), False
 
     acls = db.query(DocumentACL).filter(DocumentACL.document_id == doc_id).all()
@@ -42,17 +38,13 @@ def get_fresh_document_principals(doc_id: str, db: Session) -> Tuple[Set[str], b
         else:
             principals.add(f"{p_type}:{p_id}")
 
-    _ACL_CACHE[doc_id] = (now, principals, doc.is_active)
+    cache_manager.set_acl(doc_id, sorted(list(principals)), doc.is_active)
     return principals, doc.is_active
 
 
 def invalidate_acl_cache(doc_id: Optional[str] = None):
-    """Invalidates the ACL cache for a document or globally."""
-    global _ACL_CACHE
-    if doc_id:
-        _ACL_CACHE.pop(doc_id, None)
-    else:
-        _ACL_CACHE.clear()
+    """Globally invalidates the ACL cache across all cluster nodes/processes."""
+    cache_manager.invalidate_acl(doc_id)
 
 
 def verify_answer_time_permissions(
@@ -81,5 +73,8 @@ def verify_answer_time_permissions(
             # Fail closed on error
             if settings.FAIL_CLOSED_ON_ACL_ERROR:
                 removed_ids.append(c.chunk_id)
+
+    if removed_ids:
+        cache_manager.track_metric("pruned_by_acl_total", len(removed_ids))
 
     return verified, removed_ids

@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from app.core.config import settings
 from app.db.session import init_db, SessionLocal
 from app.api.routes import router as api_router
+from app.api.metrics import metrics_router
 from eval.run_security import seed_corpus_if_empty
 
 
@@ -36,6 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(metrics_router)
 
 
 @app.get("/healthz", tags=["Health"])

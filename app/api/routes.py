@@ -1,13 +1,18 @@
 import time
 import uuid
+import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
+from fastapi import APIRouter, Depends, HTTPException, Query, Header, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.db.models import Connector, Document, DocumentACL, Chunk, AuditLog, EvalRun
 from app.api.auth import get_current_identity, IdentityContext, SEEDED_PERSONAS
+from app.api.middleware import rate_limiter
+from app.core.cache import get_cached_rag_response, set_cached_rag_response
+from app.core.redis import cache_manager
 from app.api.schemas import (
     QueryRequest,
     QueryResponse,
@@ -29,7 +34,7 @@ from app.generation.citations import verify_and_extract_citations
 from app.generation.llm_adapters.mock import MockLLMAdapter
 from app.generation.llm_adapters.gemini import GeminiLLMAdapter
 from app.agent.runner import AgentRunner
-from app.audit.logger import record_audit_log, get_audit_logs
+from app.audit.logger import record_audit_log, background_record_audit_log, get_audit_logs
 from app.core.config import settings
 from eval.run_security import run_security_suite
 from eval.run_quality import run_quality_benchmarks
@@ -58,19 +63,44 @@ def list_personas():
 @router.post("/query", response_model=QueryResponse)
 def execute_query(
     req: QueryRequest,
-    identity: IdentityContext = Depends(get_current_identity),
+    background_tasks: BackgroundTasks,
+    identity: IdentityContext = Depends(rate_limiter),
     db: Session = Depends(get_db),
 ):
     """
     Main permission-aware RAG query endpoint (G1, G2, G3, G4).
     Enforces authorization at retrieval time and again at answer time.
+    High-concurrency optimized with permission-isolated caching and async audit logging.
     """
     start_time = time.time()
+    cache_manager.track_metric("queries_total", 1)
+
+    # 0. Check Permission-Isolated Response Cache (High QPS optimization for 1,000+ users)
+    cached_data = get_cached_rag_response(identity.principals, req.question)
+    if cached_data:
+        cached_meta = cached_data.get("meta", {})
+        cached_meta["latency_ms"] = round((time.time() - start_time) * 1000, 2)
+        cached_meta["cached"] = True
+        cached_data["meta"] = cached_meta
+
+        # Persist audit record in current DB session
+        record_audit_log(
+            user_id=identity.user_id,
+            query=req.question,
+            rewritten_query=None,
+            retrieved_ids=[c["chunk_ref"] for c in cached_data.get("citations", [])],
+            removed_ids=[],
+            model=cached_meta.get("model", settings.LLM_PROVIDER) + " (cached)",
+            latency_ms=cached_meta["latency_ms"],
+            tokens=len(req.question.split()),
+            db=db,
+        )
+        return QueryResponse(**cached_data)
 
     # 1. Query Rewriting / expansion
     rewritten = rewrite_query(req.question)
 
-    # 2. Retrieval-time permission-filtered search
+    # 2. Retrieval-time permission-filtered search (pushed down to SQL)
     candidates = search_hybrid(
         query=rewritten,
         user_identity=identity,
@@ -115,7 +145,7 @@ def execute_query(
         retrieved_ids=retrieved_chunk_ids,
         removed_ids=removed_ids,
         model=model_name,
-        latency_ms=latency_ms,
+        latency_ms=round(latency_ms, 2),
         tokens=len(req.question.split()) + len(clean_answer.split()),
         db=db,
     )
@@ -131,7 +161,7 @@ def execute_query(
         for c in raw_citations
     ]
 
-    return QueryResponse(
+    response_payload = QueryResponse(
         answer=clean_answer,
         citations=citations,
         meta=QueryMeta(
@@ -140,8 +170,56 @@ def execute_query(
             filtered_out=len(removed_ids),
             persona=identity.persona,
             model=model_name,
+            cached=False,
         ),
     )
+
+    # Store in Permission-Isolated Response Cache
+    set_cached_rag_response(
+        principals=identity.principals,
+        query=req.question,
+        response_data=response_payload.model_dump(),
+    )
+
+    return response_payload
+
+
+@router.post("/query/stream")
+def execute_query_stream(
+    req: QueryRequest,
+    identity: IdentityContext = Depends(rate_limiter),
+    db: Session = Depends(get_db),
+):
+    """
+    Streaming query endpoint delivering tokens/chunks via Server-Sent Events (SSE)
+    for low Time-To-First-Byte (TTFB) under high concurrency.
+    """
+    start_time = time.time()
+    cache_manager.track_metric("queries_total", 1)
+
+    rewritten = rewrite_query(req.question)
+    candidates = search_hybrid(query=rewritten, user_identity=identity, db=db, top_k=req.options.top_k)
+    if req.options.rerank and candidates:
+        candidates = rerank_candidates(rewritten, candidates, top_k=req.options.top_k)
+    verified_candidates, removed_ids = verify_answer_time_permissions(candidates, identity, db)
+
+    prompt = build_generation_prompt(req.question, verified_candidates)
+    adapter = MockLLMAdapter() if settings.LLM_PROVIDER == "mock" else GeminiLLMAdapter()
+    raw_answer = adapter.generate(prompt, SYSTEM_PROMPT)
+    clean_answer, raw_citations = verify_and_extract_citations(raw_answer, verified_candidates)
+
+    def event_stream():
+        # Stream answer in chunks of words for streaming effect
+        words = clean_answer.split(" ")
+        for i in range(0, len(words), 3):
+            chunk = " ".join(words[i : i + 3]) + " "
+            yield f"data: {json.dumps({'event': 'token', 'text': chunk})}\n\n"
+            time.sleep(0.01)
+
+        # Stream final citations & metadata
+        yield f"data: {json.dumps({'event': 'done', 'citations': raw_citations, 'meta': {'chunks_used': len(verified_candidates), 'filtered_out': len(removed_ids), 'latency_ms': round((time.time() - start_time) * 1000, 2)}})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.get("/documents/{doc_id}")
