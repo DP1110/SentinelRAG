@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.db.session import init_db, SessionLocal
 from app.api.routes import router as api_router
@@ -38,6 +39,10 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(metrics_router)
+
+assets_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
+if os.path.exists(assets_path):
+    app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
 
 @app.get("/healthz", tags=["Health"])
