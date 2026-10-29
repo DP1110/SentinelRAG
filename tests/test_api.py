@@ -58,8 +58,14 @@ def test_audit_logs_endpoint(client):
         headers={"X-Persona": "engineer"},
         json={"question": "What is our company mission?"},
     )
-    res = client.get("/v1/audit?limit=10")
+    res = client.get("/v1/audit?limit=10", headers={"X-Persona": "engineer"})
     assert res.status_code == 200
     logs = res.json()
     assert len(logs) > 0
     assert logs[0]["user_id"] == "bob_eng"
+
+
+def test_unauthenticated_query_returns_401(client):
+    res = client.post("/v1/query", json={"question": "What is our company mission?"})
+    assert res.status_code == 401
+    assert "Authentication required" in res.json()["detail"]

@@ -260,7 +260,11 @@
       tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Running 10 Red-Team security attack categories...</td></tr>';
 
       try {
-        const res = await fetch('/v1/eval/run', { method: 'POST' });
+        const persona = document.getElementById('personaSelect').value;
+        const res = await fetch('/v1/eval/run', {
+          method: 'POST',
+          headers: { 'X-Persona': persona }
+        });
         const data = await res.json();
         const sec = data.summary.security;
 
@@ -293,8 +297,11 @@
 
     async function loadAuditLogs() {
       const tbody = document.getElementById('auditTableBody');
+      const persona = document.getElementById('personaSelect').value;
       try {
-        const res = await fetch('/v1/audit?limit=20');
+        const res = await fetch('/v1/audit?limit=20', {
+          headers: { 'X-Persona': persona }
+        });
         const logs = await res.json();
         tbody.innerHTML = '';
         if (logs.length === 0) {

@@ -20,9 +20,15 @@ def build_generation_prompt(query: str, candidates: List[RetrievalCandidate]) ->
 
     context_segments = []
     for idx, c in enumerate(candidates, start=1):
+        # Sanitize text and attributes against delimiter breakouts (indirect prompt injection defense)
+        safe_text = (
+            c.text.replace("</context_block>", "&lt;/context_block&gt;")
+            .replace("<context_block", "&lt;context_block")
+        )
+        safe_title = c.doc_title.replace('"', '&quot;')
         segment = (
-            f'<context_block id="{idx}" doc_id="{c.document_id}" doc_title="{c.doc_title}">\n'
-            f"{c.text}\n"
+            f'<context_block id="{idx}" doc_id="{c.document_id}" doc_title="{safe_title}">\n'
+            f"{safe_text}\n"
             f"</context_block>"
         )
         context_segments.append(segment)

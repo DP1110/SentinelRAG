@@ -119,6 +119,7 @@ def sync_connector_items(
                     update_document_acls(existing_doc.id, item.acls, db)
 
         except Exception as e:
+            db.rollback()
             errors.append(str(e))
 
     db.commit()

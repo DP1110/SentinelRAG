@@ -67,12 +67,8 @@ def get_current_identity(
                 principals=principals,
             )
 
-    # 3. Default fallback to engineer for development/local testing if no header provided
-    default_info = SEEDED_PERSONAS["engineer"]
-    return IdentityContext(
-        user_id=default_info["user_id"],
-        email=default_info["email"],
-        display_name=default_info["display_name"],
-        persona="engineer",
-        principals=default_info["principals"],
+    # 3. Reject unauthenticated queries (Fail-closed authentication - FR-3)
+    raise HTTPException(
+        status_code=401,
+        detail="Authentication required. Provide 'X-Persona' or 'Authorization: Bearer <token>' header.",
     )

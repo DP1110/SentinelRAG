@@ -195,7 +195,10 @@ def run_agent_task(
 
 
 @router.get("/connectors", response_model=List[ConnectorResponse])
-def list_connectors(db: Session = Depends(get_db)):
+def list_connectors(
+    identity: IdentityContext = Depends(get_current_identity),
+    db: Session = Depends(get_db),
+):
     """List registered connectors and sync status."""
     connectors = db.query(Connector).all()
     return [
@@ -211,8 +214,15 @@ def list_connectors(db: Session = Depends(get_db)):
 
 
 @router.post("/connectors", response_model=ConnectorResponse)
-def register_connector(req: ConnectorCreateRequest, db: Session = Depends(get_db)):
+def register_connector(
+    req: ConnectorCreateRequest,
+    identity: IdentityContext = Depends(get_current_identity),
+    db: Session = Depends(get_db),
+):
     """Register a new source connector."""
+    if "group:executives" not in identity.principals and identity.persona != "executive":
+        raise HTTPException(status_code=403, detail="Administrator permissions required to register connectors")
+
     existing = db.query(Connector).filter(Connector.id == req.id).first()
     if existing:
         raise HTTPException(status_code=400, detail="Connector ID already exists")
@@ -240,6 +250,7 @@ def view_audit_logs(
     limit: int = 50,
     offset: int = 0,
     user_id: Optional[str] = None,
+    identity: IdentityContext = Depends(get_current_identity),
     db: Session = Depends(get_db),
 ):
     """Admin endpoint to inspect tamper-evident audit logs (FR-44)."""
@@ -261,7 +272,10 @@ def view_audit_logs(
 
 
 @router.post("/eval/run")
-def trigger_eval_run(db: Session = Depends(get_db)):
+def trigger_eval_run(
+    identity: IdentityContext = Depends(get_current_identity),
+    db: Session = Depends(get_db),
+):
     """
     Runs the full security red-team harness (S1-S10) and quality benchmark suite.
     """
@@ -270,7 +284,7 @@ def trigger_eval_run(db: Session = Depends(get_db)):
     eval_record = EvalRun(
         id=run_id,
         config_json={"harness": "S1-S10 + Quality"},
-        finished_at=datetime.utcnow() if "datetime" in globals() else None,
+        finished_at=datetime.utcnow(),
         summary_json=report,
     )
     db.add(eval_record)

@@ -62,25 +62,26 @@ def search_hybrid(
     """
     user_principals_set: Set[str] = set(user_identity.principals)
 
-    # 1. Fetch active chunks and filter by allowed_principals
-    active_chunks = (
+    # 1. SQL-level filter pushdown for allowed_principals (PRD FR-18, FR-23)
+    from sqlalchemy import or_, cast, String
+
+    query_filters = [Chunk.is_active == True, Document.is_active == True]
+    bind = db.get_bind()
+
+    if bind and bind.dialect.name == "postgresql":
+        query_filters.append(Chunk.allowed_principals.overlap(user_identity.principals))
+    else:
+        # SQLite JSON containment via LIKE matching on casted string
+        principal_conditions = [cast(Chunk.allowed_principals, String).like(f'%"{p}"%') for p in user_identity.principals]
+        if principal_conditions:
+            query_filters.append(or_(*principal_conditions))
+
+    allowed_chunks = (
         db.query(Chunk, Document)
         .join(Document, Chunk.document_id == Document.id)
-        .filter(Chunk.is_active == True, Document.is_active == True)
+        .filter(*query_filters)
         .all()
     )
-
-    allowed_chunks = []
-    for chunk, doc in active_chunks:
-        principals = chunk.allowed_principals
-        if isinstance(principals, list):
-            chunk_principals = set(principals)
-        else:
-            chunk_principals = set()
-
-        # Enforce RETRIEVAL-TIME access filter: set intersection must be non-empty
-        if not user_principals_set.isdisjoint(chunk_principals):
-            allowed_chunks.append((chunk, doc))
 
     if not allowed_chunks:
         return []

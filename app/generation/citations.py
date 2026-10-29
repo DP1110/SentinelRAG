@@ -36,23 +36,30 @@ def verify_and_extract_citations(
         return cleaned_answer, []
 
     cited_indices = set()
-    matches = re.findall(r"\[(\d+)\]", raw_answer)
+    matches = re.findall(r"\[([\d,\s]+)\]", raw_answer)
     for m in matches:
-        try:
-            val = int(m)
-            if 1 <= val <= len(candidates):
-                cited_indices.add(val)
-        except ValueError:
-            pass
+        for part in m.split(","):
+            part_clean = part.strip()
+            if part_clean.isdigit():
+                val = int(part_clean)
+                if 1 <= val <= len(candidates):
+                    cited_indices.add(val)
 
     # Clean bogus citations that are outside candidate range
     def replace_citation(match):
-        val = int(match.group(1))
-        if val in cited_indices:
-            return f"[{val}]"
+        raw_inner = match.group(1)
+        valid_parts = []
+        for part in raw_inner.split(","):
+            part_clean = part.strip()
+            if part_clean.isdigit():
+                val = int(part_clean)
+                if val in cited_indices:
+                    valid_parts.append(str(val))
+        if valid_parts:
+            return f"[{', '.join(valid_parts)}]"
         return ""  # Remove bogus citation
 
-    cleaned_answer = re.sub(r"\[(\d+)\]", replace_citation, raw_answer).strip()
+    cleaned_answer = re.sub(r"\[([\d,\s]+)\]", replace_citation, raw_answer).strip()
     # Normalize multiple adjacent spaces created by dropped citations
     cleaned_answer = re.sub(r"\s{2,}", " ", cleaned_answer)
 
