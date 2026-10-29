@@ -1,0 +1,217 @@
+{
+  "project": "SentinelRAG",
+  "branchName": "ralph/sentinel-rag",
+  "description": "Permission-aware enterprise RAG platform enforcing authorization at retrieval time and answer time, with hybrid search, verifiable citations, and automated S1-S10 security test harness.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Database Schema & Container Foundation",
+      "description": "As a platform engineer, I want a containerized PostgreSQL database with pgvector, FTS, and relational schema so that chunks, vectors, ACLs, and audit logs are securely stored.",
+      "acceptanceCriteria": [
+        "Docker Compose defines Postgres 16 with pgvector extension and Redis",
+        "SQLAlchemy models define users, groups, group_members, connectors, documents, document_acl, chunks, audit_log, and eval tables",
+        "HNSW index on chunks.embedding and GIN indexes on chunks.tsv and chunks.allowed_principals",
+        "FastAPI health check GET /healthz returns status ok",
+        "Typecheck and tests pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Foundation for all subsequent storage and indexing operations. Verified with test_healthz_endpoint."
+    },
+    {
+      "id": "US-002",
+      "title": "Identity & Multi-Persona Authentication Context",
+      "description": "As an enterprise user, I want my authenticated identity and group memberships resolved on every query so that the system enforces my exact permissions.",
+      "acceptanceCriteria": [
+        "OAuth2/OIDC token validator extracts user id, email, and group claims",
+        "Seeded directory provider supports 5 personas: intern, engineer, hr_manager, finance_analyst, executive",
+        "Principal set builder resolves user:<id>, group:<id>, domain:<domain>, and public",
+        "Anonymous queries return HTTP 401 Unauthorized",
+        "Typecheck and tests pass"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Verified in test_auth.py with all 5 personas."
+    },
+    {
+      "id": "US-003",
+      "title": "Connector Framework & Document Sources",
+      "description": "As an administrator, I want modular connectors for Google Drive and GitHub so that corporate documents and code repositories are ingested with native ACL metadata.",
+      "acceptanceCriteria": [
+        "Base connector interface defines list_items, fetch_content, fetch_acl, and detect_changes",
+        "Google Drive connector extracts files, folder hierarchies, and native ACLs (user, group, domain, anyone)",
+        "GitHub connector extracts repository files, branches, and team/collaborator permissions",
+        "Connector credentials are securely loaded from environment variables and never logged in plaintext",
+        "Typecheck and tests pass"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Connectors implemented and verified with sync worker."
+    },
+    {
+      "id": "US-004",
+      "title": "Ingestion Pipeline, Chunker & Prompt Injection Risk Scorer",
+      "description": "As a data engineer, I want documents parsed, cleaned, chunked with structural awareness, and scanned for prompt injection so that high-quality, safe chunks enter the index.",
+      "acceptanceCriteria": [
+        "Parsers support Markdown, Text, PDF, DOCX, and Code files",
+        "Text cleaner normalizes whitespace, strips zero-width characters, and cleans boilerplate",
+        "Structure-aware chunker splits on headings, paragraphs, and code blocks targeting 512 tokens with 64 overlap",
+        "Prompt injection risk scorer flags suspicious instructions and assigns a risk_score",
+        "Typecheck and tests pass"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Verified in test_chunker.py and test_risk_scorer.py."
+    },
+    {
+      "id": "US-005",
+      "title": "Dense & Sparse Indexing with Allowed Principals Array",
+      "description": "As a search engineer, I want chunks converted to dense vectors and indexed alongside full-text search vectors and allowed principals so that they are ready for hybrid search.",
+      "acceptanceCriteria": [
+        "Embedding adapter converts text to dense vectors (384 dimensions) with CPU/GPU support",
+        "Chunks store embedding vector, tsvector tsv, and allowed_principals text array",
+        "Deduplication detects identical content hashes and marks superseded versions inactive",
+        "Typecheck and tests pass"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Tested with normalized 384-d vectors and allowed_principals scoping."
+    },
+    {
+      "id": "US-006",
+      "title": "Retrieval-Time Permission-Aware Hybrid Search",
+      "description": "As a user, I want hybrid keyword and semantic search that filters out inaccessible documents at the query level so that unauthorized chunks never enter candidate pools.",
+      "acceptanceCriteria": [
+        "Vector search applies allowed_principals && :user_principals array overlap in the query",
+        "Full-text search applies the same allowed_principals filter in parallel",
+        "Reciprocal Rank Fusion (RRF) merges keyword and vector candidate ranks",
+        "Inactive chunks are strictly excluded from results",
+        "Typecheck and tests pass"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Verified in test_hybrid.py and test_permissions.py."
+    },
+    {
+      "id": "US-007",
+      "title": "Cross-Encoder Reranking",
+      "description": "As a search engineer, I want top search candidates reranked by a cross-encoder model so that answer relevance is optimized within the authorized candidate set.",
+      "acceptanceCriteria": [
+        "Cross-encoder reranks top 50 candidates down to top k (default 8)",
+        "Reranker falls back to RRF score gracefully if model unavailable or disabled",
+        "Reranking can be toggled per request via options.rerank",
+        "Typecheck and tests pass"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Verified in test_hybrid.py."
+    },
+    {
+      "id": "US-008",
+      "title": "Answer-Time Permission Verification & Fail-Closed Guard",
+      "description": "As a security auditor, I want candidates re-verified against live or cached ACLs right before LLM synthesis so that stale permissions never cause data leakage.",
+      "acceptanceCriteria": [
+        "ACL cache with short TTL re-verifies user permission on each candidate document ID",
+        "Revoked or unauthorized candidate documents are purged immediately before generation",
+        "If all candidates fail the check, system returns generic empty message without hinting at document existence",
+        "Removed chunk IDs are logged in audit_log.removed_ids",
+        "Typecheck and tests pass"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Verified in test_permissions.py and S2 revoked permissions red-team test."
+    },
+    {
+      "id": "US-009",
+      "title": "Grounded Generation, Delimited Context & Citation Verifier",
+      "description": "As a knowledge worker, I want answers synthesized strictly from authorized chunks with bracketed citations so that I can verify facts and avoid hallucinations.",
+      "acceptanceCriteria": [
+        "Prompt template wraps retrieved chunks in untrusted context delimiters with source IDs",
+        "System prompt instructs LLM to abstain when context is insufficient",
+        "Citation verifier checks that every [N] citation corresponds to a provided chunk ID",
+        "Invalid or hallucinated citations are stripped",
+        "Response includes structured citations array with title, URL, and chunk_ref",
+        "Typecheck and tests pass"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Verified in test_citations.py and quality benchmarks."
+    },
+    {
+      "id": "US-010",
+      "title": "Incremental Sync Worker & ACL Freshness Engine",
+      "description": "As an administrator, I want document edits, deletions, and ACL modifications synced automatically so that search results remain fresh and secure.",
+      "acceptanceCriteria": [
+        "Sync worker periodically polls or processes change events from connectors",
+        "Document updates trigger re-chunking and re-embedding for modified documents only",
+        "Deleted or unshared documents are marked is_active = false",
+        "Permission changes update document_acl and chunk allowed_principals without re-embedding",
+        "Typecheck and tests pass"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Verified in sync worker and acl_sync modules."
+    },
+    {
+      "id": "US-011",
+      "title": "Permission-Enforced Agent & Tool Calling",
+      "description": "As an employee, I want an AI agent that can search documents, summarize files, and draft tickets while strictly enforcing my permissions on every tool execution.",
+      "acceptanceCriteria": [
+        "Agent runner supports search_knowledge, get_document, summarize_document, and create_ticket tools",
+        "All tool invocations execute under requesting user's identity, never an elevated service account",
+        "Write actions (create_ticket) require explicit confirmation",
+        "Agent runner enforces step limit (default 5)",
+        "Typecheck and tests pass"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "Verified in test_agent.py."
+    },
+    {
+      "id": "US-012",
+      "title": "Comprehensive Audit Logging & Metrics",
+      "description": "As a compliance officer, I want complete audit logs of all queries, user identities, retrieved chunks, and latency metrics so that all enterprise access is traceable.",
+      "acceptanceCriteria": [
+        "audit_log records user_id, query, retrieved_ids, removed_ids, model, latency_ms, tokens, and timestamp",
+        "Audit logger masks sensitive data and excludes PII",
+        "Admin endpoint GET /v1/audit supports paginated querying and filtering",
+        "Latency and token metrics are recorded per query stage",
+        "Typecheck and tests pass"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "Verified in test_api.py and view_audit_logs endpoint."
+    },
+    {
+      "id": "US-013",
+      "title": "Automated S1-S10 Red-Team Security & Quality Evaluation Harness",
+      "description": "As a security reviewer, I want an automated test suite evaluating retrieval quality and testing 10 security attack categories (S1-S10) so that zero-leakage compliance is verified.",
+      "acceptanceCriteria": [
+        "Synthetic enterprise corpus seeds 4 departments and 5 personas with public, department, and restricted docs",
+        "Automated security suite tests S1 through S10 attack vectors (cross-user, revoked access, indirect injection, etc.)",
+        "Zero leakage assertion: suite fails if any persona accesses forbidden content",
+        "Quality harness computes Recall@k, Faithfulness, and Abstention correctness",
+        "CLI and API endpoint POST /v1/eval/run generates a detailed Markdown/JSON report",
+        "Typecheck and tests pass"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "Verified in test_security_suite.py: 11/11 cases passed with 0 leakage."
+    },
+    {
+      "id": "US-014",
+      "title": "Interactive Web UI & Demo Dashboard",
+      "description": "As an employee and administrator, I want an interactive web UI with a persona switcher, chat interface, citation inspector, and red-team dashboard.",
+      "acceptanceCriteria": [
+        "FastAPI serves modern single-page web UI at root endpoint GET /",
+        "Persona switcher allows querying as Intern, Engineer, HR Manager, Finance Analyst, or Executive",
+        "Chat interface renders grounded answers with interactive citation pills",
+        "Admin dashboard provides connector status, audit log explorer, and one-click security evaluation runner",
+        "Typecheck and tests pass"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "Served at GET / and tested via TestClient."
+    }
+  ]
+}
