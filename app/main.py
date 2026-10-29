@@ -45,6 +45,14 @@ if os.path.exists(assets_path):
     app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    fav_path = os.path.join(assets_path, "logo.svg")
+    if os.path.exists(fav_path):
+        return FileResponse(fav_path, media_type="image/svg+xml")
+    return HTMLResponse(status_code=204)
+
+
 @app.get("/healthz", tags=["Health"])
 def health_check():
     """Health check endpoint."""
