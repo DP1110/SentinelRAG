@@ -12,3 +12,5 @@ htmlcov/
 env/
 venv/
 *.log
+*.db-shm
+*.db-wal
