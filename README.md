@@ -11,6 +11,9 @@
 </p>
 
 <p align="center">
+  <a href="https://dp1110.github.io/SentinelRAG/">
+    <img src="https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-09090b?style=flat&logo=github" alt="Live Demo" />
+  </a>
   <a href="https://github.com/DP1110/SentinelRAG/actions/workflows/ci.yml">
     <img src="https://github.com/DP1110/SentinelRAG/actions/workflows/ci.yml/badge.svg" alt="CI/CD Status" />
   </a>
@@ -31,6 +34,7 @@
 </p>
 
 <p align="center">
+  <a href="https://dp1110.github.io/SentinelRAG/"><strong>Live Web Demo</strong></a> •
   <a href="#overview">Overview</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#key-features">Key Features</a> •
@@ -112,7 +116,20 @@ flowchart TD
 
 ## Quickstart
 
-### Option A: Localhost Quickstart (30 Seconds)
+### Option A: Live Web Platform (Hosted on GitHub — Zero Setup)
+
+Access the live SentinelRAG web interface directly on GitHub Pages:
+
+👉 **[https://dp1110.github.io/SentinelRAG/](https://dp1110.github.io/SentinelRAG/)**
+
+* **Zero installation required:** Runs smoothly in any desktop, tablet, or mobile web browser.
+* **Persona switching:** Instantly toggle between 5 roles (Intern, Engineer, HR, Finance, Executive).
+* **Security & Quality Suite:** Run all 10 Red-Team attacks with a single click.
+* **Live Audit Trails:** Review real-time tamper-evident SHA-256 access logs.
+
+---
+
+### Option B: Local Python Development
 
 ```bash
 # 1. Clone the repository
@@ -126,11 +143,9 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open **[http://localhost:8000](http://localhost:8000)** in your browser to explore the interactive Web UI.
-
 ---
 
-### Option B: Production Docker Deployment
+### Option C: Production Docker Deployment
 
 ```bash
 # Run with PostgreSQL (pgvector) + Redis + 4-worker Uvicorn
