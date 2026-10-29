@@ -1,10 +1,20 @@
-# 🛡️ SentinelRAG
+<p align="center">
+  <img src="assets/logo.svg" width="130" alt="SentinelRAG Logo" />
+</p>
 
-**Enterprise RAG where authorization is enforced at retrieval time and again at answer time, and where the proof is automated tests, not promises.**
+<h1 align="center">SentinelRAG</h1>
 
-[![Security Test Suite](https://img.shields.io/badge/Red--Team%20Suite-0%20Leakage%20Guaranteed-success)](file:///C:/Users/Asus/.gemini/antigravity/scratch/sentinelrag/eval/run_security.py)
-[![Recall@10](https://img.shields.io/badge/Recall%4010-100%25-blue)](file:///C:/Users/Asus/.gemini/antigravity/scratch/sentinelrag/eval/run_quality.py)
-[![Docker Ready](https://img.shields.io/badge/Docker%20Compose-Ready-blue)]()
+<p align="center">
+  <strong>Enterprise RAG where authorization is enforced at retrieval time and again at answer time, and where the proof is automated tests, not promises.</strong>
+</p>
+
+<p align="center">
+  <a href="eval/run_security.py"><img src="https://img.shields.io/badge/Red--Team%20Suite-0%20Leakage%20Guaranteed-success" alt="Security Test Suite" /></a>
+  <a href="eval/run_quality.py"><img src="https://img.shields.io/badge/Recall%4010-100%25-blue" alt="Recall@10" /></a>
+  <a href="load_test_report.md"><img src="https://img.shields.io/badge/Concurrency-1%2C000%20Users%20Tested-purple" alt="Concurrency" /></a>
+  <a href="docker-compose.yml"><img src="https://img.shields.io/badge/Docker%20Compose-Ready-blue" alt="Docker Ready" /></a>
+  <img src="https://img.shields.io/badge/Python-3.11-informational" alt="Python" />
+</p>
 
 ---
 
@@ -69,7 +79,6 @@ python -m eval.report
 | `finance_analyst` | Analyst Dave | Finance Highlights + Project Titan M&A + Companywide |
 | `executive` | CEO Eve | All Corporate Records + Secret Strategy Memo |
 
-
 ---
 
 ## ⚡ 1,000+ Concurrent User High-Scale Architecture
@@ -106,4 +115,4 @@ python -m eval.load_test_1k
 - **Median Latency (p50):** **146 ms**
 - **Success Rate:** **100.0%**
 - **Cache Hit Rate:** **69.7%**
-- **Report generated:** [`load_test_report.md`](file:///C:/Users/Asus/.gemini/antigravity/scratch/sentinelrag/load_test_report.md)
+- **Report generated:** [`load_test_report.md`](load_test_report.md)
