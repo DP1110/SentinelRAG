@@ -31,18 +31,19 @@
 </p>
 
 <p align="center">
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-key-features">Key Features</a> •
-  <a href="#-quickstart">Quickstart</a> •
-  <a href="#-1000-user-concurrency-benchmark">1,000-User Benchmark</a> •
-  <a href="#-red-team-security-matrix-s1s10">Red-Team Security</a> •
-  <a href="#-api-reference">API Reference</a> •
-  <a href="#-docker-deployment">Docker</a>
+  <a href="#overview">Overview</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#key-features">Key Features</a> •
+  <a href="#quickstart">Quickstart</a> •
+  <a href="#1000-user-concurrency-benchmark">1,000-User Benchmark</a> •
+  <a href="#red-team-security-matrix-s1s10">Red-Team Security</a> •
+  <a href="#api-reference">API Reference</a> •
+  <a href="#docker-deployment">Docker</a>
 </p>
 
 ---
 
-## 📖 Overview
+## Overview
 
 In modern enterprises, an intern, a software engineer, an HR director, and an executive might all query the same organizational knowledge base. **Off-the-shelf RAG systems routinely leak confidential records** across roles via prompt injection, retrieval contamination, semantic inference, or shared cache artifacts.
 
@@ -53,7 +54,7 @@ In modern enterprises, an intern, a software engineer, an HR director, and an ex
 
 ---
 
-## 🛡️ Architecture
+## Architecture
 
 ```mermaid
 flowchart TD
@@ -94,22 +95,22 @@ flowchart TD
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 | Capability | Technical Implementation | Benefit |
 |---|---|---|
 | **Dual-Layer Authorization** | SQL Array Overlap pushdown + Answer-time fresh ACL verification | Mathematically guarantees 0 cross-user data leaks (PRD G1, G2, G3). |
 | **High Concurrency (1k+ Users)** | Connection pooling (`QueuePool` / SQLite WAL) + Redis cache + sliding-window rate limiter | Sustains **73.7+ QPS** (300+ QPS multi-worker) at **146ms p50 latency**. |
-| **Permission-Isolated Cache** | Key: `sentinel:resp:{sha256(principals)}:{sha256(query)}` | Delivers sub-5ms recurring queries while eliminating cache cross-contamination (**S9**). |
-| **Verifiable Citations** | Deterministic bracketed citation mapping (`[1]`, `[2]`) with automatic pruning of hallucinated refs | No unsubstantiated claims or fake source references (**FR-14**). |
+| **Permission-Isolated Cache** | Key: `sentinel:resp:{sha256(principals)}:{sha256(query)}` | Delivers sub-5ms recurring queries while eliminating cache cross-contamination (S9). |
+| **Verifiable Citations** | Deterministic bracketed citation mapping (`[1]`, `[2]`) with automatic pruning of hallucinated refs | No unsubstantiated claims or fake source references (FR-14). |
 | **Tamper-Evident Audit** | SHA-256 hash chaining of queries, filtered chunk IDs, models, and latencies | Non-repudiable compliance log satisfying corporate SOC2 / ISO 27001 requirements. |
-| **Prompt Injection Defense** | Cryptographic random boundary tokens (`<<<UNTRUSTED_CONTENT_...>>>`) | Neutralizes indirect prompt injections and jailbreak attacks (**S5**). |
+| **Prompt Injection Defense** | Cryptographic random boundary tokens (`<<<UNTRUSTED_CONTENT_...>>>`) | Neutralizes indirect prompt injections and jailbreak attacks (S5). |
 | **Real-Time Streaming** | Server-Sent Events endpoint (`POST /v1/query/stream`) | Ultra-low Time-To-First-Byte (TTFB) under peak concurrent traffic. |
 | **Prometheus Observability** | Exported at `GET /metrics` | Native integration with Prometheus and Grafana dashboards. |
 
 ---
 
-## ⚡ Quickstart
+## Quickstart
 
 ### Option A: Localhost Quickstart (30 Seconds)
 
@@ -125,7 +126,7 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-🌐 Open **[http://localhost:8000](http://localhost:8000)** in your browser to explore the interactive Web UI!
+Open **[http://localhost:8000](http://localhost:8000)** in your browser to explore the interactive Web UI.
 
 ---
 
@@ -138,7 +139,7 @@ docker compose up --build
 
 ---
 
-## 📊 1,000-User Concurrency Benchmark
+## 1,000-User Concurrency Benchmark
 
 We conducted a high-load stress benchmark simulating **1,000 concurrent enterprise users** across 5 distinct permission tiers with adversarial cross-user probing.
 
@@ -150,18 +151,18 @@ python -m eval.load_test_1k
 ### Verified Results:
 | Benchmark KPI | Standard Target | Observed Result | Status |
 |---|---|---|---|
-| **Zero Data Leakage (S1–S10)** | **0 Failures** | **0 Leaks Detected** | ✅ **PERFECT (0/1,000)** |
-| **Throughput (Single Process)** | > 50 QPS | **73.7 req/sec** *(300+ QPS on 4 workers)* | ✅ **EXCEEDED** |
-| **Median Latency (p50)** | < 250 ms | **146.05 ms** | ✅ **EXCEEDED** |
-| **p95 Latency** | < 10,000 ms | **9,280.42 ms** | ✅ **PASSED** |
-| **Success Rate** | > 99.0% | **100.00%** (1,000/1,000 succeeded) | ✅ **PASSED** |
-| **Permission Cache Hit Rate** | > 50.0% | **69.7%** | ✅ **EFFECTIVE** |
+| **Zero Data Leakage (S1–S10)** | **0 Failures** | **0 Leaks Detected** | **Perfect (0/1,000)** |
+| **Throughput (Single Process)** | > 50 QPS | **73.7 req/sec** *(300+ QPS on 4 workers)* | **Exceeded** |
+| **Median Latency (p50)** | < 250 ms | **146.05 ms** | **Exceeded** |
+| **p95 Latency** | < 10,000 ms | **9,280.42 ms** | **Passed** |
+| **Success Rate** | > 99.0% | **100.00%** (1,000/1,000 succeeded) | **Passed** |
+| **Permission Cache Hit Rate** | > 50.0% | **69.7%** | **Effective** |
 
 Detailed report available in [`load_test_report.md`](load_test_report.md).
 
 ---
 
-## 🔒 Red-Team Security Matrix (S1–S10)
+## Red-Team Security Matrix (S1–S10)
 
 SentinelRAG includes an automated continuous adversarial security harness executing all 10 standard enterprise attack classes:
 
@@ -172,20 +173,20 @@ python -m eval.run_security
 
 | Attack Category | Threat Scenario | SentinelRAG Defense | Status |
 |---|---|---|---|
-| **S1: Direct Unauthorized Retrieval** | Intern attempts to fetch CEO compensation | Blocked at Layer 1 via SQL principal filtering | ✅ PASSED |
-| **S2: Revoked Group Permission** | Transferred engineer queries previous project docs | Purged at Layer 2 via fresh authoritative ACL cache | ✅ PASSED |
-| **S3: Unshared Document Access** | Employee queries confidential one-on-one document | Zero candidates returned due to exact user ID scoping | ✅ PASSED |
-| **S4: Semantic Inference Extraction** | Asking subtle indirect questions to deduce secret M&A | LLM refusal triggered; untrusted snippets never injected | ✅ PASSED |
-| **S5: Indirect Prompt Injection** | Malicious document instructs LLM to bypass rules | Delimited boundaries neutralize prompt takeover | ✅ PASSED |
-| **S6: Citation Metadata Leakage** | Answer hides text but citation reveals sensitive title | Citation validator purges unauthorized chunk references | ✅ PASSED |
-| **S7: Multi-Turn Accumulation** | Reconstructing secrets across multiple chat queries | Scoped per-turn authorization without state leakage | ✅ PASSED |
-| **S8: Tool Permission Escalation** | Agent instructed to execute privileged action | Mandatory user confirmation barrier enforced | ✅ PASSED |
-| **S9: Cache Cross-Contamination** | User B attempts to access cached answer of User A | Cache keys hashed by both query and caller principals | ✅ PASSED |
-| **S10: SQL / Filter Bypass** | SQL injection strings in query input | Parameterized SQLAlchemy expressions prevent bypass | ✅ PASSED |
+| **S1: Direct Unauthorized Retrieval** | Intern attempts to fetch CEO compensation | Blocked at Layer 1 via SQL principal filtering | Passed |
+| **S2: Revoked Group Permission** | Transferred engineer queries previous project docs | Purged at Layer 2 via fresh authoritative ACL cache | Passed |
+| **S3: Unshared Document Access** | Employee queries confidential one-on-one document | Zero candidates returned due to exact user ID scoping | Passed |
+| **S4: Semantic Inference Extraction** | Asking subtle indirect questions to deduce secret M&A | LLM refusal triggered; untrusted snippets never injected | Passed |
+| **S5: Indirect Prompt Injection** | Malicious document instructs LLM to bypass rules | Delimited boundaries neutralize prompt takeover | Passed |
+| **S6: Citation Metadata Leakage** | Answer hides text but citation reveals sensitive title | Citation validator purges unauthorized chunk references | Passed |
+| **S7: Multi-Turn Accumulation** | Reconstructing secrets across multiple chat queries | Scoped per-turn authorization without state leakage | Passed |
+| **S8: Tool Permission Escalation** | Agent instructed to execute privileged action | Mandatory user confirmation barrier enforced | Passed |
+| **S9: Cache Cross-Contamination** | User B attempts to access cached answer of User A | Cache keys hashed by both query and caller principals | Passed |
+| **S10: SQL / Filter Bypass** | SQL injection strings in query input | Parameterized SQLAlchemy expressions prevent bypass | Passed |
 
 ---
 
-## 👥 Personas Matrix
+## Personas Matrix
 
 | Persona Key | Identity | Accessible Datasets | Prohibited Datasets |
 |---|---|---|---|
@@ -197,7 +198,7 @@ python -m eval.run_security
 
 ---
 
-## 🔌 API Reference
+## API Reference
 
 ### 1. Execute Permission-Aware Query
 `POST /v1/query`
@@ -258,7 +259,7 @@ curl "http://localhost:8000/metrics"
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```
 sentinelrag/
@@ -303,7 +304,7 @@ sentinelrag/
 
 ---
 
-## 🧪 Running Automated Tests
+## Running Automated Tests
 
 ```bash
 # Run complete test suite (27 passed)
@@ -321,6 +322,6 @@ python -m eval.load_test_1k
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.

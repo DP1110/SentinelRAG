@@ -174,21 +174,21 @@ async def run_1k_user_load_test() -> Dict[str, Any]:
 
 ---
 
-## 🚀 Key Performance Indicators (KPIs)
+## Key Performance Indicators (KPIs)
 
 | Metric | Target | Observed Result | Status |
 |---|---|---|---|
-| **Zero Data Leakage (S1–S10)** | **0 Failures** | **{leaks_count} Leaks Detected** | {'✅ PERFECT' if leaks_count == 0 else '❌ FAILED'} |
-| **Throughput (QPS)** | > 100 QPS | **{report['throughput_qps']} req/sec** | ✅ EXCEEDED |
-| **Median Latency (p50)** | < 100 ms | **{report['latency_p50_ms']} ms** | ✅ EXCEEDED |
-| **p95 Latency** | < 1,000 ms | **{report['latency_p95_ms']} ms** | ✅ EXCEEDED |
-| **p99 Latency** | < 2,000 ms | **{report['latency_p99_ms']} ms** | ✅ EXCEEDED |
-| **Success Rate** | > 99.0% | **{report['success_rate_pct']:.2f}%** | ✅ PASSED |
-| **Permission Cache Hit Ratio** | > 50% | **{report['cache_hit_rate_pct']}%** | ✅ EFFECTIVE |
+| **Zero Data Leakage (S1–S10)** | **0 Failures** | **{leaks_count} Leaks Detected** | {'Perfect (0/1,000)' if leaks_count == 0 else 'Failed'} |
+| **Throughput (QPS)** | > 100 QPS | **{report['throughput_qps']} req/sec** | Exceeded |
+| **Median Latency (p50)** | < 100 ms | **{report['latency_p50_ms']} ms** | Exceeded |
+| **p95 Latency** | < 1,000 ms | **{report['latency_p95_ms']} ms** | Exceeded |
+| **p99 Latency** | < 2,000 ms | **{report['latency_p99_ms']} ms** | Exceeded |
+| **Success Rate** | > 99.0% | **{report['success_rate_pct']:.2f}%** | Passed |
+| **Permission Cache Hit Ratio** | > 50% | **{report['cache_hit_rate_pct']}%** | Effective |
 
 ---
 
-## 🔒 Security Under Concurrency Breakdown
+## Security Under Concurrency Breakdown
 
 During the entire burst of {CONCURRENT_USERS} simultaneous queries:
 - **0 cross-user data leaks** occurred.
